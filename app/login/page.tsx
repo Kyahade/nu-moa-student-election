@@ -7,17 +7,42 @@ export default function LoginPage() {
   const router = useRouter();
 
   const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  function handleLogin() {
-    if (!email.endsWith("@students.nu-moa.edu.ph")) {
+  async function handleLogin() {
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (!normalizedEmail.endsWith("@students.nu-moa.edu.ph")) {
       alert("Please use your NU student email.");
       return;
     }
 
-    // Temporary login for V1
-    localStorage.setItem("studentEmail", email);
+    setLoading(true);
 
-    router.push("/election");
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: normalizedEmail,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(data.error ?? "Unable to log in.");
+        setLoading(false);
+        return;
+      }
+
+      router.push("/program");
+    } catch {
+      alert("Something went wrong. Please try again.");
+      setLoading(false);
+    }
   }
 
   return (
@@ -42,16 +67,19 @@ export default function LoginPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="mt-2 w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-blue-700"
+            disabled={loading}
           />
         </div>
 
         <button
           onClick={handleLogin}
-          className="mt-6 w-full rounded-lg bg-blue-900 py-3 font-semibold text-white hover:bg-blue-800"
+          disabled={loading}
+          className="mt-6 w-full rounded-lg bg-blue-900 py-3 font-semibold text-white hover:bg-blue-800 disabled:opacity-50"
         >
-          Continue
+          {loading ? "Signing in..." : "Continue"}
         </button>
       </div>
     </main>
   );
 }
+

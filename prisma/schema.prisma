@@ -1,0 +1,174 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ElectionBodyType {
+  STUDENT_GOVERNMENT
+  COUNCIL
+  ACADEMIC_RSO
+  ORGANIZATION
+}
+
+model Election {
+  id        Int      @id @default(autoincrement())
+  name      String
+  startDate DateTime
+  endDate   DateTime
+  isActive  Boolean  @default(false)
+
+  positions      Position[]
+  electionBodies ElectionBody[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model College {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+
+  programs Program[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Program {
+  id        Int     @id @default(autoincrement())
+  name      String
+  collegeId Int
+  college   College @relation(fields: [collegeId], references: [id])
+
+  voters               Voter[]
+  electionBodyPrograms ElectionBodyProgram[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([collegeId, name])
+}
+
+model ElectionBody {
+  id         Int              @id @default(autoincrement())
+  name       String
+  type       ElectionBodyType
+  electionId Int
+
+  election Election @relation(fields: [electionId], references: [id])
+
+  programs ElectionBodyProgram[]
+
+  positions Position[]
+  teams     PoliticalTeam[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ElectionBodyProgram {
+  electionBodyId Int
+  programId      Int
+
+  electionBody ElectionBody @relation(fields: [electionBodyId], references: [id], onDelete: Cascade)
+  program      Program      @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  @@id([electionBodyId, programId])
+}
+
+model Position {
+  id       Int    @id @default(autoincrement())
+  name     String
+  maxVotes Int    @default(1)
+
+  electionId Int
+  election   Election @relation(fields: [electionId], references: [id])
+
+  // Optional for compatibility with existing positions.
+  electionBodyId Int?
+  electionBody   ElectionBody? @relation(fields: [electionBodyId], references: [id])
+
+  candidates Candidate[]
+
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  ballotSelections BallotSelection[]
+}
+
+model PoliticalTeam {
+  id   Int    @id @default(autoincrement())
+  name String
+
+  electionBodyId Int
+  electionBody   ElectionBody @relation(fields: [electionBodyId], references: [id])
+
+  candidates Candidate[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Candidate {
+  id       Int     @id @default(autoincrement())
+  name     String
+  party    String?
+  photoUrl String?
+
+  positionId Int
+  position   Position @relation(fields: [positionId], references: [id])
+
+  politicalTeamId Int?
+  politicalTeam   PoliticalTeam? @relation(fields: [politicalTeamId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ballotSelections BallotSelection[]
+}
+
+model Voter {
+  id        Int     @id @default(autoincrement())
+  email     String  @unique
+  studentId String? @unique
+
+  // The student's chosen/assigned program.
+  programId Int?
+  program   Program? @relation(fields: [programId], references: [id])
+
+  hasVoted Boolean @default(false)
+  isAdmin  Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Session {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  email     String
+  expiresAt DateTime
+
+  createdAt DateTime @default(now())
+}
+
+model Ballot {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+
+  selections BallotSelection[]
+}
+
+model BallotSelection {
+  id          Int @id @default(autoincrement())
+  ballotId    Int
+  candidateId Int
+  positionId  Int
+
+  ballot    Ballot    @relation(fields: [ballotId], references: [id])
+  candidate Candidate @relation(fields: [candidateId], references: [id])
+  position  Position  @relation(fields: [positionId], references: [id])
+}
